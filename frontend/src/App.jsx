@@ -6,9 +6,8 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
-import { Brain, Clapperboard, Search, Zap } from 'lucide-react';
+import { Brain, Clapperboard, Search, Zap, ExternalLink } from 'lucide-react';
 
-// Backend base URL dynamic resolution
 // Backend base URL dynamic resolution
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
@@ -50,7 +49,6 @@ export default function App() {
         const response = await fetch(`${API_BASE_URL}/trending`);
         if (!response.ok) throw new Error("Could not fetch trending movies.");
         const data = await response.json();
-        // Fixed: Extract the 'results' array from response object
         setInitialMovies(data.results || []);
       } catch (err) {
         setError(err.message);
@@ -83,7 +81,6 @@ export default function App() {
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      // Fixed: Extract the 'results' array from response object
       setResults(data.results || []);
     } catch (err) {
       setError(err.message || 'Failed to fetch recommendations.');
@@ -169,9 +166,15 @@ function MovieCard({ movie, index }) {
   // Safe score formatting helper
   const formattedScore = typeof movie.score === 'number' ? movie.score.toFixed(2) : 'N/A';
 
+  // Dynamic IMDb URL fallback resolution
+  const imdbUrl =
+    movie.imdb_url ||
+    (movie.imdb_id ? `https://www.imdb.com/title/${movie.imdb_id}/` : null) ||
+    (movie.title ? `https://www.imdb.com/find/?q=${encodeURIComponent(movie.title)}` : null);
+
   const CardContentWrapper = ({ children }) =>
-    movie.imdb_url ? (
-      <a href={movie.imdb_url} target="_blank" rel="noopener noreferrer" className="block group">
+    imdbUrl ? (
+      <a href={imdbUrl} target="_blank" rel="noopener noreferrer" className="block group">
         {children}
       </a>
     ) : (
@@ -184,7 +187,7 @@ function MovieCard({ movie, index }) {
       style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
     >
       <CardContentWrapper>
-        <div className="aspect-[2/3] w-full overflow-hidden">
+        <div className="aspect-[2/3] w-full overflow-hidden relative">
           <img
             src={movie.poster_url || placeholderUrl}
             onError={(e) => { e.currentTarget.src = placeholderUrl; }}
@@ -194,7 +197,11 @@ function MovieCard({ movie, index }) {
         </div>
 
         <div className="p-6">
-          <CardTitle className="text-2xl mb-2">{movie.title}</CardTitle>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <CardTitle className="text-2xl">{movie.title}</CardTitle>
+            <ExternalLink className="w-5 h-5 text-slate-400 group-hover:text-white shrink-0 mt-1 transition-colors" />
+          </div>
+
           <CardDescription className="mb-4">
             {movie.genre || 'N/A'} • {movie.year || movie.release_year || 'N/A'}
           </CardDescription>
