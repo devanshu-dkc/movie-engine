@@ -9,11 +9,12 @@ import {
 import { Brain, Clapperboard, Search, Zap } from 'lucide-react';
 
 // Backend base URL dynamic resolution
+// Backend base URL dynamic resolution
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://127.0.0.1:10000"
-    : "https://movie-backend.onrender.com");
+    : "https://movie-engine-qo92.onrender.com");
 
 function InitialSuggestions({ movies, loading }) {
   if (loading) {
