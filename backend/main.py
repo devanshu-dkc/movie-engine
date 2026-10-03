@@ -33,7 +33,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Allowed CORS Origins
+
 # Allowed CORS Origins
 origins = [
     "https://movie-engine-bg9836t23-dev-346f.vercel.app",
@@ -45,8 +45,14 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    # Allow all origins so any Vercel preview branch/domain can fetch data
-    allow_origins=["*"],
+    allow_origins=[
+        "https://movie-engine-dusky.vercel.app",
+        "https://movie-engine-em7prrl40-dev-346f.vercel.app",
+        "https://movie-engine-bg9836t23-dev-346f.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
