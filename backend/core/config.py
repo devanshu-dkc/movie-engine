@@ -3,7 +3,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Path references
-# BASE_DIR points to backend/
 BASE_DIR = Path(__file__).resolve().parent
 
 # Load local backend/.env first, then fallback to root .env
@@ -11,7 +10,8 @@ load_dotenv(dotenv_path=BASE_DIR / ".env")
 load_dotenv(dotenv_path=BASE_DIR.parent / ".env")
 
 # === Embedding Model ===
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+# Standardized to match BAAI/bge-small-en-v1.5 (384 dimensions)
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 
 # === Qdrant Cloud ===
 QDRANT_URL = os.getenv("QDRANT_URL")
