@@ -8,12 +8,15 @@ import {
 } from "@/components/ui/card";
 import { Brain, Clapperboard, Search, Zap } from 'lucide-react';
 
-// Backend base URL dynamic resolution
-const API_BASE_URL =
+// Backend base URL dynamic resolution with automatic trailing-slash removal
+const rawApiUrl =
   import.meta.env.VITE_API_URL ||
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://127.0.0.1:10000"
-    : "https://movie-backend.onrender.com");
+    : "https://movie-engine-qo92.onrender.com");
+
+// Strip any trailing slashes so `${API_BASE_URL}/recommend` never forms a double slash
+const API_BASE_URL = rawApiUrl.replace(/\/+$/, '');
 
 function InitialSuggestions({ movies, loading }) {
   if (loading) {
@@ -49,7 +52,6 @@ export default function App() {
         const response = await fetch(`${API_BASE_URL}/trending`);
         if (!response.ok) throw new Error("Could not fetch trending movies.");
         const data = await response.json();
-        // Fixed: Extract the 'results' array from response object
         setInitialMovies(data.results || []);
       } catch (err) {
         setError(err.message);
@@ -82,7 +84,6 @@ export default function App() {
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      // Fixed: Extract the 'results' array from response object
       setResults(data.results || []);
     } catch (err) {
       setError(err.message || 'Failed to fetch recommendations.');
@@ -165,7 +166,6 @@ function MovieCard({ movie, index }) {
     placeholderUrl = `https://placehold.co/500x750/363328/fcd34d?text=${placeholderText}`;
   }
 
-  // Safe score formatting helper
   const formattedScore = typeof movie.score === 'number' ? movie.score.toFixed(2) : 'N/A';
 
   const CardContentWrapper = ({ children }) =>
