@@ -67,7 +67,8 @@ app.add_middleware(
 )
 
 
-@app.get("/")
+# FIX 1: Support both GET and HEAD for Render Health Checks
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {
         "status": "online",
@@ -79,7 +80,9 @@ def root():
     }
 
 
+# FIX 2: Added trailing slash redirects to handle // and trailing-slash route mismatches
 @app.get("/trending")
+@app.get("/trending/")
 def get_trending(limit: int = Query(6, ge=1, le=20)):
     """Fetch daily trending movies via TMDB."""
     if not tmdb_service:
@@ -99,6 +102,7 @@ def get_trending(limit: int = Query(6, ge=1, le=20)):
 
 
 @app.get("/recommend")
+@app.get("/recommend/")
 def recommend(query: str = Query(..., min_length=1), top_k: int = Query(6, ge=1, le=20)):
     """Perform semantic vector search and enrich results with TMDB posters/links."""
     if not semantic_search_service:
