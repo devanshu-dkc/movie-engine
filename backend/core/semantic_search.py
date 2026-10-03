@@ -1,6 +1,11 @@
 import os
 import logging
 from typing import List, Dict, Optional
+
+# Limit PyTorch CPU threads to reduce RAM overhead on Render
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance, PointStruct
@@ -17,12 +22,13 @@ class SemanticSearch:
         qdrant_api_key: Optional[str] = None,
     ):
         self.collection_name = collection_name
-        self.model = SentenceTransformer(model_name)
+        
+        # Explicitly force CPU loading to save memory
+        self.model = SentenceTransformer(model_name, device="cpu")
 
-        qdrant_url = qdrant_url or os.getenv("QDRANT_URL", "http://localhost:6333")
+        qdrant_url = qdrant_url or os.getenv("QDRANT_URL") or os.getenv("QDRANT_HOST", "http://localhost:6333")
         qdrant_api_key = qdrant_api_key or os.getenv("QDRANT_API_KEY")
 
-        # Set explicit timeout and disable version check to prevent Connection reset/WriteTimeout errors
         client_kwargs = {
             "url": qdrant_url,
             "timeout": 60.0,
@@ -32,7 +38,6 @@ class SemanticSearch:
             client_kwargs["api_key"] = qdrant_api_key
 
         self.client = QdrantClient(**client_kwargs)
-
         self._ensure_collection()
 
     def _ensure_collection(self):
@@ -49,7 +54,6 @@ class SemanticSearch:
                 logger.info(f"Using existing Qdrant collection: {self.collection_name}")
         except Exception as e:
             logger.error(f"Error ensuring collection exists: {e}")
-            # Re-raise so FastAPI lifespan safely sets service to None instead of crashing on requests
             raise e
 
     def index_movies(self, movies: List[Dict], batch_size: int = 100):
@@ -87,7 +91,6 @@ class SemanticSearch:
                     )
                 )
 
-            # wait=False avoids holding open HTTP write streams
             self.client.upsert(collection_name=self.collection_name, points=points, wait=False)
             logger.info(f"Indexed batch {i // batch_size + 1}/{total_batches}")
 
