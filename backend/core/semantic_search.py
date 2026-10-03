@@ -22,11 +22,16 @@ class SemanticSearch:
         qdrant_url = qdrant_url or os.getenv("QDRANT_URL", "http://localhost:6333")
         qdrant_api_key = qdrant_api_key or os.getenv("QDRANT_API_KEY")
 
-        # Set explicit 60-second timeout to prevent WriteTimeout on cloud calls
+        # Set explicit timeout and disable version check to prevent Connection reset/WriteTimeout errors
+        client_kwargs = {
+            "url": qdrant_url,
+            "timeout": 60.0,
+            "check_compatibility": False
+        }
         if qdrant_api_key:
-            self.client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60.0)
-        else:
-            self.client = QdrantClient(url=qdrant_url, timeout=60.0)
+            client_kwargs["api_key"] = qdrant_api_key
+
+        self.client = QdrantClient(**client_kwargs)
 
         self._ensure_collection()
 
@@ -44,6 +49,8 @@ class SemanticSearch:
                 logger.info(f"Using existing Qdrant collection: {self.collection_name}")
         except Exception as e:
             logger.error(f"Error ensuring collection exists: {e}")
+            # Re-raise so FastAPI lifespan safely sets service to None instead of crashing on requests
+            raise e
 
     def index_movies(self, movies: List[Dict], batch_size: int = 100):
         valid_movies = [m for m in movies if m.get("plot") and str(m["plot"]).strip()]
