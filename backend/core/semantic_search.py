@@ -1,14 +1,29 @@
 import os
+import sys
 import logging
+from pathlib import Path
 from typing import List, Dict, Optional
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
+# Dynamically resolve paths so imports work locally and on Render
+CURRENT_FILE = Path(__file__).resolve()
+BACKEND_DIR = CURRENT_FILE.parent.parent      # .../backend
+PROJECT_ROOT = BACKEND_DIR.parent             # .../
+
+for path_entry in (str(BACKEND_DIR), str(PROJECT_ROOT)):
+    if path_entry not in sys.path:
+        sys.path.insert(0, path_entry)
+
+# Fallback-safe import of EMBEDDING_MODEL
 try:
     from config import EMBEDDING_MODEL
 except ImportError:
-    from backend.config import EMBEDDING_MODEL
+    try:
+        from backend.config import EMBEDDING_MODEL
+    except ImportError:
+        EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +66,6 @@ class SemanticSearch:
         total = len(movies)
         for i in range(0, total, batch_size):
             batch = movies[i : i + batch_size]
-            # Embed raw plot summaries without query instructions
             texts = [m.get("plot", "").strip() for m in batch]
             embeddings = list(self.model.embed(texts))
 
@@ -64,6 +78,8 @@ class SemanticSearch:
                         "plot": m.get("plot", ""),
                         "year": m.get("year", "N/A"),
                         "release_year": m.get("release_year", "N/A"),
+                        "genre": m.get("genre", ""),
+                        "director": m.get("director", ""),
                     },
                 )
                 for m, emb in zip(batch, embeddings)
@@ -76,7 +92,6 @@ class SemanticSearch:
         """
         Applies BGE query instruction prefix and executes similarity search.
         """
-        # BGE models require asymmetric retrieval prefix for queries
         bge_query = f"Represent this sentence for searching relevant passages: {query.strip()}"
         query_vector = list(self.model.embed([bge_query]))[0].tolist()
 
@@ -93,6 +108,8 @@ class SemanticSearch:
                 "id": r.id,
                 "title": payload.get("title", "Unknown Title"),
                 "plot": payload.get("plot", ""),
+                "genre": payload.get("genre", ""),
+                "director": payload.get("director", ""),
                 "year": payload.get("year") or payload.get("release_year") or "N/A",
                 "score": round(float(r.score), 4),
             })
