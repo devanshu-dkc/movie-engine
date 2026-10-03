@@ -17,7 +17,6 @@ class SemanticSearch:
     ):
         self.collection_name = collection_name
         
-        # FastEmbed uses ONNX runtime — loads instantly with minimal memory
         logger.info("Initializing FastEmbed model...")
         self.model = TextEmbedding(model_name=model_name)
 
@@ -35,7 +34,6 @@ class SemanticSearch:
         self.client = QdrantClient(**client_kwargs)
 
     def search(self, query: str, top_k: int = 10) -> List[Dict]:
-        # FastEmbed returns a generator of vectors
         query_vector = list(self.model.embed([query]))[0].tolist()
 
         response = self.client.query_points(
