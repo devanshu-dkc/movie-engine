@@ -59,14 +59,35 @@ class SemanticSearch:
 
         self.client = QdrantClient(**client_kwargs)
 
+    @staticmethod
+    def _build_embedding_text(movie: Dict) -> str:
+        """
+        Creates a unified composite string containing title, director,
+        genre, release year, and plot so queries with metadata match.
+        """
+        parts = []
+        if movie.get("title"):
+            parts.append(f"Title: {movie['title']}")
+        if movie.get("director"):
+            parts.append(f"Director: {movie['director']}")
+        if movie.get("genre"):
+            parts.append(f"Genre: {movie['genre']}")
+        year = movie.get("year") or movie.get("release_year")
+        if year and str(year).strip() != "N/A":
+            parts.append(f"Year: {year}")
+        if movie.get("plot"):
+            parts.append(f"Plot: {movie['plot']}")
+        return " | ".join(parts)
+
     def index_movies(self, movies: List[Dict], batch_size: int = 100):
         """
-        Embeds movie plots as raw passages and upserts them to Qdrant.
+        Embeds movie composite text as raw passages and upserts them to Qdrant.
         """
         total = len(movies)
         for i in range(0, total, batch_size):
             batch = movies[i : i + batch_size]
-            texts = [m.get("plot", "").strip() for m in batch]
+            # Embed the enriched composite representation
+            texts = [self._build_embedding_text(m) for m in batch]
             embeddings = list(self.model.embed(texts))
 
             points = [

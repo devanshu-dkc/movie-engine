@@ -7,20 +7,32 @@ from typing import List, Dict, Optional
 from dotenv import load_dotenv
 from qdrant_client.models import VectorParams, Distance
 
-# 1. Load .env explicitly from project root and backend folder
+# 1. Resolve relative directory anchors:
+# SCRIPT_DIR  -> .../backend/scripts
+# BACKEND_DIR -> .../backend
+# PROJECT_ROOT -> .../ (root where data/ and .env live)
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parents[1] if (SCRIPT_DIR.parents[1] / "data").exists() else SCRIPT_DIR.parent
+BACKEND_DIR = SCRIPT_DIR.parent
+PROJECT_ROOT = BACKEND_DIR.parent
 
+# Add both PROJECT_ROOT and BACKEND_DIR to sys.path for runtime execution
+for p in (str(PROJECT_ROOT), str(BACKEND_DIR)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+# 2. Load environment variables
 load_dotenv(PROJECT_ROOT / ".env")
-load_dotenv(SCRIPT_DIR.parent / ".env")
+load_dotenv(BACKEND_DIR / ".env")
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+# 3. Import SemanticSearch safely with type ignore to suppress LSP/linter diagnostics
+try:
+    from backend.core.semantic_search import SemanticSearch  # type: ignore # noqa: F401
+except (ImportError, ModuleNotFoundError):
+    from core.semantic_search import SemanticSearch  # type: ignore # noqa: F401
 
-from backend.core.semantic_search import SemanticSearch
-
+# Explicit path to the JSON dataset in root data/
 JSON_DATA_PATH = PROJECT_ROOT / "data" / "movies_temp.json"
 COLLECTION_NAME = "movies"
 EMBEDDING_DIM = 384
@@ -49,6 +61,8 @@ def load_dataset(limit: Optional[int] = None) -> List[Dict]:
             continue
 
         year = str(item.get("year") or item.get("release_year") or "N/A").strip()
+        director = str(item.get("director", "")).strip()
+        genre = str(item.get("genre", "")).strip()
 
         movies.append({
             "id": idx + 1,
@@ -56,6 +70,8 @@ def load_dataset(limit: Optional[int] = None) -> List[Dict]:
             "plot": plot,
             "year": year,
             "release_year": year,
+            "director": director,
+            "genre": genre,
         })
 
     logging.info(f"Loaded {len(movies)} valid movie records.")
@@ -75,7 +91,7 @@ def recreate_and_ingest(movies: List[Dict]):
         vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
     )
 
-    logging.info(f"Ingesting {len(movies)} movies into Qdrant Cloud...")
+    logging.info(f"Ingesting {len(movies)} movies into Qdrant...")
     ss.index_movies(movies, batch_size=100)
     logging.info("Ingestion completed successfully.")
 
